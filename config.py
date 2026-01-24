@@ -9,12 +9,12 @@ from dotenv import load_dotenv, find_dotenv
 # 自动向上查找项目根目录的.env文件（支持在任何子目录中调用）
 dotenv_path = find_dotenv(usecwd=True)
 if dotenv_path:
-    load_dotenv(dotenv_path)
+    load_dotenv(dotenv_path, override=True)
 else:
     # 如果找不到，尝试从当前文件所在目录查找
     current_dir = Path(__file__).resolve().parent
     env_path = current_dir / ".env"
-    load_dotenv(env_path)
+    load_dotenv(env_path, override=True)
 
 
 class Config:
@@ -40,6 +40,10 @@ class Config:
     # LangChain 配置
     LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY", "")
     
+    # ModelScope 配置
+    MODELSCOPE_API_KEY = os.getenv("MODELSCOPE_API_KEY", "")
+    MODELSCOPE_BASE_URL = os.getenv("MODELSCOPE_BASE_URL", "https://api-inference.modelscope.cn/v1")
+    
     @classmethod
     def get_openai_config(cls) -> dict:
         """获取OpenAI配置"""
@@ -61,6 +65,14 @@ class Config:
         """获取Anthropic配置"""
         return {
             "api_key": cls.ANTHROPIC_API_KEY
+        }
+    
+    @classmethod
+    def get_modelscope_config(cls) -> dict:
+        """获取ModelScope配置"""
+        return {
+            "api_key": cls.MODELSCOPE_API_KEY,
+            "base_url": cls.MODELSCOPE_BASE_URL
         }
 
 
