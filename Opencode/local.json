@@ -4,6 +4,116 @@
         "opencode-antigravity-auth@latest"
     ],
     "provider": {
+        "modelscope": {
+            "whitelist": [
+                "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                "Qwen/Qwen3-235B-A22B-Thinking-2507",
+                "ZhipuAI/GLM-4.7",
+                "deepseek-ai/DeepSeek-V3.2",
+                "Qwen/Qwen3-VL-235B-A22B-Instruct",
+                "Qwen/Qwen2.5-VL-72B-Instruct"
+            ],
+            "models": {
+                "ZhipuAI/GLM-4.7": {
+                    "name": "GLM-4.7",
+                    "tool_call": true,
+                    "reasoning": true,
+                    "temperature": true,
+                    "cost": {
+                        "input": 0.60,
+                        "output": 2.20,
+                        "cache_read": 0.11,
+                        "cache_write": 0.00
+                    },
+                    "limit": {
+                        "context": 204800,
+                        "output": 131072
+                    },
+                    "modalities": {
+                        "input": [
+                            "text"
+                        ],
+                        "output": [
+                            "text"
+                        ]
+                    }
+                },
+                "deepseek-ai/DeepSeek-V3.2": {
+                    "name": "Deepseek V3.2",
+                    "tool_call": true,
+                    "reasoning": true,
+                    "temperature": true,
+                    "cost": {
+                        "input": 0.28,
+                        "output": 0.42,
+                        "cache_read": 0.00,
+                        "cache_write": 0.00
+                    },
+                    "limit": {
+                        "context": 163840,
+                        "output": 65536
+                    },
+                    "modalities": {
+                        "input": [
+                            "text"
+                        ],
+                        "output": [
+                            "text"
+                        ]
+                    }
+                },
+                "Qwen/Qwen3-VL-235B-A22B-Instruct": {
+                    "name": "Qwen3-VL 235B-A22B",
+                    "tool_call": true,
+                    "reasoning": false,
+                    "temperature": true,
+                    "cost": {
+                        "input": 0.29,
+                        "output": 1.15,
+                        "cache_read": 0.00,
+                        "cache_write": 0.00
+                    },
+                    "limit": {
+                        "context": 131072,
+                        "output": 32768
+                    },
+                    "modalities": {
+                        "input": [
+                            "text",
+                            "image"
+                        ],
+                        "output": [
+                            "text"
+                        ]
+                    }
+                },
+                "Qwen/Qwen2.5-VL-72B-Instruct": {
+                    "name": "Qwen2.5-VL 72B Instruct",
+                    "tool_call": true,
+                    "reasoning": false,
+                    "temperature": true,
+                    "cost": {
+                        "input": 2.29,
+                        "output": 6.88,
+                        "cache_read": 0.00,
+                        "cache_write": 0.00
+                    },
+                    "limit": {
+                        "context": 131072,
+                        "output": 8192
+                    },
+                    "modalities": {
+                        "input": [
+                            "text",
+                            "image"
+                        ],
+                        "output": [
+                            "text"
+                        ]
+                    }
+                }
+            }
+        },
         "google": {
             "whitelist": [
                 "antigravity-claude-opus-4-5-thinking",
