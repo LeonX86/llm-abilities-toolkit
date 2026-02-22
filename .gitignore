@@ -19,3 +19,7 @@ __pycache__/
 
 # 数据
 Skills/meeting/data
+
+# 敏感配置目录（含 API Key，不纳入版本控制）
+Opencode/
+Openclaw/
