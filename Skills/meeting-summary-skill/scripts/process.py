@@ -94,9 +94,11 @@ def process(file_path: str) -> None:
         results.append(summary)
 
     output_path = input_path.parent / f'{input_path.stem}_会议纪要.md'
-    final_content = meeting_info + '\n\n## 会议纪要\n\n' + '\n\n'.join(results)
+    # meeting_info 对应模板中的 ## 基本信息 部分，放在 ## 会议纪要 之前
+    sections = [meeting_info, '## 会议纪要'] + [r.strip() for r in results]
+    final_content = '\n\n'.join(s for s in sections if s)
     with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(final_content)
+        f.write(final_content + '\n')
 
     print(f'\n已写入：{output_path}')
 
