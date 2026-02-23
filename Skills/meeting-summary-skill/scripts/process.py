@@ -71,7 +71,7 @@ def process(file_path: str) -> None:
 
     meeting_info, speeches = parse(content)
     total = len(speeches)
-    print(f'共 {total} 段发言，开始逐段总结...\n')
+    print(f'Total {total} sections, summarizing...\n')
 
     client = OpenAI(
         base_url=config.MODELSCOPE_BASE_URL,
@@ -80,7 +80,7 @@ def process(file_path: str) -> None:
 
     results = []
     for idx, speech in enumerate(speeches, 1):
-        print(f'\r处理中：{idx}/{total}', end='', flush=True)
+        print(f'\rProcessing: {idx}/{total}', end='', flush=True)
         summary = summarize(client, meeting_info, speech)
         results.append(summary)
     print()
@@ -92,11 +92,11 @@ def process(file_path: str) -> None:
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(final_content + '\n')
 
-    print(f'\n已写入：{output_path}')
+    print(f'\nWritten to: {output_path}')
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print('用法: python process.py <会议转写.md>', file=sys.stderr)
+        print('Usage: python process.py <meeting_transcript.md>', file=sys.stderr)
         sys.exit(1)
     process(sys.argv[1])
