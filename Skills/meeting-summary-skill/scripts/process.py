@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 # 加载项目配置（绝对路径，确保 skill 部署到任何位置后仍可用）
-sys.path.insert(0, str(Path.home() / 'WorkFlow/E/Code/Python/llm-abilities-toolkit'))
+sys.path.insert(0, r'C:\WorkFlow\E\Code\Python\llm-abilities-toolkit')
 from config import config
 from openai import OpenAI
 
@@ -60,16 +60,8 @@ def summarize(client: OpenAI, meeting_info: str, speech: str) -> str:
             {'role': 'system', 'content': '你是一位专业的会议纪要助手。'},
             {'role': 'user', 'content': prompt},
         ],
-        stream=True,
     )
-    result = []
-    for chunk in response:
-        if chunk.choices and chunk.choices[0].delta.content:
-            text = chunk.choices[0].delta.content
-            result.append(text)
-            print(text, end='', flush=True)
-    print()
-    return ''.join(result)
+    return response.choices[0].message.content
 
 
 def process(file_path: str) -> None:
@@ -88,10 +80,10 @@ def process(file_path: str) -> None:
 
     results = []
     for idx, speech in enumerate(speeches, 1):
-        print(f'\r进度：{idx}/{total} 段', flush=True)
-        print('-' * 40)
+        print(f'\r处理中：{idx}/{total}', end='', flush=True)
         summary = summarize(client, meeting_info, speech)
         results.append(summary)
+    print()
 
     output_path = input_path.parent / f'{input_path.stem}_会议纪要.md'
     # meeting_info 对应模板中的 ## 基本信息 部分，放在 ## 会议纪要 之前
