@@ -1,11 +1,11 @@
 ---
 name: background-remove-skill
-description: 纯色背景去除（抠图）技能。当用户需要去除图片白色或黑色背景、抠图、保留透明底、处理贴纸/表情包/图标时使用。支持细节保留（如内部同色区域、半透明边缘等），并提供边缘毛边优化参数。用户提到"抠图"、"去背景"、"白底变透明"、"黑底变透明"、"去掉白色背景"、"去掉黑色背景"、"边缘毛边"时必须触发此 skill。
+description: 纯色背景去除（抠图）技能。当用户需要去除图片白色或黑色背景、抠图、保留透明底、处理贴纸/表情包/图标，或需要导出透明底GIF用于QQ表情时使用。支持细节保留（如内部同色区域、半透明边缘等），并提供边缘毛边优化参数。用户提到"抠图"、"去背景"、"白底变透明"、"黑底变透明"、"去掉白色背景"、"去掉黑色背景"、"边缘毛边"、"QQ表情"、"发QQ有黑底"时必须触发此 skill。
 ---
 
 # 纯色背景去除 Skill
 
-适用于：白色或黑色纯色背景图片、贴纸、表情包、卡通插画、图标，输出带透明通道的 PNG 文件。
+适用于：白色或黑色纯色背景图片、贴纸、表情包、卡通插画、图标，输出带透明通道的 PNG 文件；支持进一步导出透明底 GIF，用于 QQ 等只支持 GIF 透明底的平台。
 
 ---
 
@@ -26,9 +26,14 @@ description: 纯色背景去除（抠图）技能。当用户需要去除图片�
 
 ### 第二步：首次运行（使用默认参数）
 
-安装依赖：
+先验证依赖是否已安装：
 ```bash
-pip install Pillow numpy scipy --break-system-packages -q
+python -c "import PIL, numpy, scipy; print('依赖已满足')"
+```
+
+若提示 `ModuleNotFoundError`，再执行安装：
+```bash
+pip install Pillow numpy scipy -q
 ```
 
 运行脚本：
@@ -79,7 +84,29 @@ python scripts/compare_bg.py C:/Users/me/images/sticker.png C:/Users/me/images/s
 
 ---
 
-### 第四步：引导用户根据结果调参
+### 第四步：导出 GIF（可选，用于 QQ 等平台）
+
+QQ 自定义表情只有 GIF 格式才能正确渲染透明底，PNG 会被盖上黑色背景。
+**当用户提到"发到QQ"、"QQ表情"、"黑色底"（PNG贴出去有黑底）时，主动提示并执行此步骤。**
+
+> 注意：GIF 只支持 1-bit 透明度，边缘半透明像素会被二值化（阈值128），对卡通贴纸影响极小。
+
+```bash
+python /path/to/scripts/to_gif.py <去背景PNG路径> [输出GIF路径（可选）]
+```
+
+**示例：**
+```bash
+# 默认输出到 PNG 同目录，文件名相同但后缀改为 .gif
+python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png
+
+# 指定输出路径
+python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png C:/Users/me/images/sticker.gif
+```
+
+---
+
+### 第五步：引导用户根据结果调参
 
 运行后**必须**向用户展示结果并说明可调参数，引导他们反馈：
 
@@ -101,7 +128,7 @@ python scripts/compare_bg.py C:/Users/me/images/sticker.png C:/Users/me/images/s
 
 ---
 
-### 第五步：迭代调整
+### 第六步：迭代调整
 
 根据用户反馈，修改参数重新运行脚本，直到用户满意为止。每次运行后都生成新的对比图。
 
