@@ -11,8 +11,16 @@ import os
 import numpy as np
 from PIL import Image
 
+if len(sys.argv) < 2:
+    print("用法：python to_gif.py <输入PNG路径> [输出GIF路径]")
+    sys.exit(1)
+
 input_path  = sys.argv[1]
 output_path = sys.argv[2] if len(sys.argv) > 2 else None
+
+if not os.path.isfile(input_path):
+    print(f"错误：输入文件不存在：{input_path}")
+    sys.exit(1)
 
 if output_path is None:
     stem        = os.path.splitext(os.path.basename(input_path))[0]

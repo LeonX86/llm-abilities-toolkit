@@ -61,7 +61,7 @@ python scripts/remove_bg.py C:/Users/me/images/sticker.png C:/Users/me/output --
 python scripts/remove_bg.py C:/Users/me/images/sticker.png C:/Users/me/output 3 0.05 --mode black
 ```
 
-输出后使用 `present_files` 把结果图片和对比图呈现给用户。
+运行完成后，将结果图片路径告知用户，并询问效果是否满意。
 
 ---
 
@@ -84,29 +84,7 @@ python scripts/compare_bg.py C:/Users/me/images/sticker.png C:/Users/me/images/s
 
 ---
 
-### 第四步：导出 GIF（可选，用于 QQ 等平台）
-
-QQ 自定义表情只有 GIF 格式才能正确渲染透明底，PNG 会被盖上黑色背景。
-**当用户提到"发到QQ"、"QQ表情"、"黑色底"（PNG贴出去有黑底）时，主动提示并执行此步骤。**
-
-> 注意：GIF 只支持 1-bit 透明度，边缘半透明像素会被二值化（阈值128），对卡通贴纸影响极小。
-
-```bash
-python /path/to/scripts/to_gif.py <去背景PNG路径> [输出GIF路径（可选）]
-```
-
-**示例：**
-```bash
-# 默认输出到 PNG 同目录，文件名相同但后缀改为 .gif
-python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png
-
-# 指定输出路径
-python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png C:/Users/me/images/sticker.gif
-```
-
----
-
-### 第五步：引导用户根据结果调参
+### 第四步：引导用户根据结果调参
 
 运行后**必须**向用户展示结果并说明可调参数，引导他们反馈：
 
@@ -128,9 +106,32 @@ python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png C:/Users/me/images/
 
 ---
 
-### 第六步：迭代调整
+### 第五步：迭代调整
 
 根据用户反馈，修改参数重新运行脚本，直到用户满意为止。每次运行后都生成新的对比图。
+
+---
+
+### 第六步：导出 GIF（可选，用于 QQ 等平台）
+
+**在用户对 PNG 效果满意后**，若用户需要发送到 QQ，再执行此步骤。
+QQ 自定义表情只有 GIF 格式才能正确渲染透明底，PNG 会被盖上黑色背景。
+**当用户提到"发到QQ"、"QQ表情"、"发QQ有黑底"时，主动提示并执行此步骤。**
+
+> 注意：GIF 只支持 1-bit 透明度，边缘半透明像素会被二值化（阈值128），对卡通贴纸影响极小。
+
+```bash
+python /path/to/scripts/to_gif.py <去背景PNG路径> [输出GIF路径（可选）]
+```
+
+**示例：**
+```bash
+# 默认输出到 PNG 同目录，文件名相同但后缀改为 .gif
+python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png
+
+# 指定输出路径
+python scripts/to_gif.py C:/Users/me/images/sticker_nobg.png C:/Users/me/images/sticker.gif
+```
 
 ---
 

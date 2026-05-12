@@ -7,9 +7,18 @@ import sys
 import os
 from PIL import Image
 
+if len(sys.argv) < 3:
+    print("用法：python compare_bg.py <原图路径> <去背景结果路径> [输出对比图路径]")
+    sys.exit(1)
+
 orig_path   = sys.argv[1]
 result_path = sys.argv[2]
 output_path = sys.argv[3] if len(sys.argv) > 3 else None
+
+for label, path in [("原图", orig_path), ("去背景结果", result_path)]:
+    if not os.path.isfile(path):
+        print(f"错误：{label}文件不存在：{path}")
+        sys.exit(1)
 
 def on_gray(img: Image.Image) -> Image.Image:
     """将带透明通道的图片合成到灰色背景上"""
