@@ -13,8 +13,10 @@ description: 处理会议转写工具导出的 .md 格式转写文件，清洗 A
 - [ ] 第一步：检查文件扩展名
 - [ ] 第二步：运行格式校验
 - [ ] 第三步：运行 prepare.py，初始化输出文件
-- [ ] 第四步：逐段启动子 Agent
-- [ ] 第五步：确认输出
+- [ ] 第四步：并发启动所有子 Agent
+- [ ] 第五步：校验临时文件数量，缺失则重试
+- [ ] 第六步：运行 finalize.py，合并并清理
+- [ ] 第七步：确认输出
 ```
 
 ### 第一步：检查文件扩展名
@@ -44,15 +46,17 @@ python scripts/prepare.py <会议转写.md路径>
 - `source_path`：原始转写文件的完整路径（已被清洗回写）
 - `output_path`：已初始化的会议纪要文件路径（已写入基本信息和 `## 会议纪要` 标题）
 
-### 第四步：逐段启动子 Agent
+同时根据 `output_path` 推导出临时文件的命名规则：每段对应一个临时文件，路径为 `output_path` 同目录下的 `{output_stem}_temp_{index}.md`。
 
-按 `1` 到 `total` 的顺序，依次为每个段落启动一个独立子 Agent（顺序执行，等待1个子 Agent 报告完成任务之后才启动下一个，避免并发写入冲突）。
+### 第四步：并发启动所有子 Agent
 
-每个子 Agent 收到的任务如下，启动前将 `{index}`、`{source_path}`、`{output_path}` 替换为实际值：
+同时为 `1` 到 `total` 的每个段落各启动一个独立子 Agent，等待所有子 Agent 回复完成后进入第五步。
+
+每个子 Agent 收到的任务如下，启动前将 `{index}`、`{source_path}`、`{temp_path}` 替换为实际值（`{temp_path}` = `{output_stem}_temp_{index}.md` 的完整路径）：
 
 ---
 
-你是一位会议纪要助手，请处理第 **{index}** 段会议转写，依次完成以下三步。
+你是一位会议纪要助手，请处理第 **{index}** 段会议转写，依次完成以下两步。
 
 **A. 获取本段内容**
 
@@ -62,7 +66,7 @@ python scripts/prepare.py <会议转写.md路径>
 python scripts/get_section.py {index} {source_path}
 ```
 
-**B. 生成本段会议纪要**
+**B. 生成本段会议纪要并写入临时文件**
 
 根据 `meeting_info` 和 `speech`，按以下要求总结本段内容：
 
@@ -72,7 +76,7 @@ python scripts/get_section.py {index} {source_path}
 4. 保留原段落标题（`### xxx`）不变，在标题下方逐行列出观点
 5. 每个观点使用数字序号（1. 2. 3.），语言简洁，使用书面语
 
-输出格式（直接输出纪要内容，禁止输出其他任何无关内容）：
+输出格式：
 
 ```
 ### 原段落标题
@@ -80,21 +84,30 @@ python scripts/get_section.py {index} {source_path}
 2. 观点二
 ```
 
-**C. 将纪要写入输出文件**
-
-将 B 步生成的纪要内容作为第二个参数传入，多行内容中的换行用 `\n` 表示，写入 `{output_path}`：
-
-```bash
-python scripts/write_section.py {output_path} "### 原段落标题\n1. 观点一\n2. 观点二"
-```
-
-完成后只需向主 Agent 回复：`第 {index} 段已完成`，不要输出纪要内容。
+生成完成后，将纪要内容写入临时文件 `{temp_path}`，然后向主 Agent 回复：`第 {index} 段已完成`，不要输出纪要内容。
 
 ---
 
-### 第五步：确认输出
+### 第五步：校验临时文件数量，缺失则重试
 
-所有子 Agent 完成后，告知用户生成文件的完整路径（即 `output_path`）。
+检查 `output_path` 同目录下 `{output_stem}_temp_*.md` 文件的数量是否等于 `total`：
+
+- 数量一致 → 继续第六步
+- 数量不足 → 找出缺失的段落编号，对每个缺失段落重新启动子 Agent 补写（使用第四步相同的任务模板）
+
+**重试规则**：对每个缺失段落单独计数，最多重试 3 次。若某段落在 3 次尝试后临时文件仍不存在，告知用户该段落编号并终止流程。
+
+### 第六步：运行 finalize.py，合并并清理
+
+```bash
+python scripts/finalize.py {output_path} {total}
+```
+
+脚本将所有临时文件按 index 顺序合并写入 `output_path`，并自动删除全部临时文件。
+
+### 第七步：确认输出
+
+告知用户生成文件的完整路径（即 `output_path`）。
 
 ## 脚本说明
 
@@ -114,11 +127,11 @@ python scripts/get_section.py 2 ./某次会议转写.md
 # 输出：JSON（section_index、total、meeting_info、speech）
 ```
 
-**write_section.py**（脚本3）：将子 Agent 生成的纪要文本作为参数追加写入输出文件，`\n` 会被转换为真实换行
+**finalize.py**（脚本3）：按 index 顺序合并所有临时文件至输出文件，并删除临时文件
 
 ```bash
-python scripts/write_section.py ./某次会议转写_会议纪要.md "### 段落标题\n1. 观点一\n2. 观点二"
-# 副作用：将第二个参数的内容追加到会议纪要文件末尾
+python scripts/finalize.py ./某次会议转写_会议纪要.md 5
+# 副作用：合并 5 个临时文件至输出文件，删除全部临时文件
 ```
 
 **validate.py**：单独校验文件格式，可在运行 prepare.py 前独立使用
