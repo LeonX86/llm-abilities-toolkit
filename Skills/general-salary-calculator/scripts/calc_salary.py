@@ -27,27 +27,27 @@ TAX_BRACKETS: list[tuple[float, float, float]] = [
     (float("inf"), 0.45, 181_920),
 ]
 
-BRACKET_UPPERS = [upper for upper, _, _ in TAX_BRACKETS]
-BRACKET_RATES = [rate for _, rate, _ in TAX_BRACKETS]
+BRACKET_UPPERS = [upper for upper, _, _ in TAX_BRACKETS]  # 各档累计应纳税所得额上限
+BRACKET_RATES = [rate for _, rate, _ in TAX_BRACKETS]      # 各档对应税率
 
 
 @dataclass
 class MonthRow:
-    month: int
-    pre_tax: float
-    social: float
-    fund: float
-    tax: float
-    after_tax: float
-    cum_pre_tax: float
-    cum_social: float
-    cum_fund: float
-    cum_tax: float
-    tax_formula: str
+    month: int          # 月份（1-12）
+    pre_tax: float      # 当月税前工资
+    social: float       # 当月社保（个人部分）
+    fund: float         # 当月公积金（个人部分）
+    tax: float          # 当月个税
+    after_tax: float    # 当月税后工资（到手）
+    cum_pre_tax: float  # 累积税前工资
+    cum_social: float   # 累积社保
+    cum_fund: float     # 累积公积金
+    cum_tax: float      # 累积个税
+    tax_formula: str    # 当月个税计算公式（LaTeX）
 
 
 def calc_cumulative_tax(cumulative_taxable: float) -> float:
-    """根据累计应纳税所得额计算累计应预扣预缴税额。"""
+    """根据累计应纳税所得额，查七级超额累进税率表，计算累计应预扣预缴税额。"""
     if cumulative_taxable <= 0:
         return 0.0
     for upper, rate, quick in TAX_BRACKETS:
@@ -57,6 +57,7 @@ def calc_cumulative_tax(cumulative_taxable: float) -> float:
 
 
 def fmt_num(value: float) -> str:
+    """格式化数字：保留两位小数，若小数部分为 0 则只显示整数。"""
     rounded = round(value, 2)
     if rounded == int(rounded):
         return str(int(rounded))
@@ -64,6 +65,7 @@ def fmt_num(value: float) -> str:
 
 
 def fmt_rate(rate: float) -> str:
+    """格式化税率：将小数转为百分比 LaTeX 字符串，如 0.10 → '10\\%'。"""
     pct = rate * 100
     if pct == int(pct):
         return f"{int(pct)}\\%"
@@ -72,8 +74,9 @@ def fmt_rate(rate: float) -> str:
 
 def build_monthly_tax_formula(prev_cum_taxable: float, curr_cum_taxable: float, tax: float) -> str:
     """
-    生成本月个税的 LaTeX 公式：按阶梯拆分当月新增应纳税所得额，
-    形如「10500 × 3% = 315」；跨档时为多段相加，最终结果等于当月个税。
+    生成当月个税的 LaTeX 计算公式。
+    按税率档位拆分当月新增应纳税所得额，未跨档时形如「10500 × 3% = 315」，
+    跨档时多段相加，如「4500 × 3% + 6000 × 10% = 735」，公式最终结果等于当月个税。
     """
     if tax <= 0:
         return "$0 = 0$"
@@ -109,6 +112,10 @@ def calc_annual_salary(
     fund_base: float,
     fund_rate: float,
 ) -> tuple[list[MonthRow], float]:
+    """
+    核心计算函数：遍历 12 个月，用累计预扣法计算每月个税与税后工资，
+    返回全年月度明细列表和平均税后月薪。
+    """
     monthly_social = round(social_base * social_rate, 2)
     monthly_fund = round(fund_base * fund_rate, 2)
     rows: list[MonthRow] = []
@@ -151,10 +158,12 @@ def calc_annual_salary(
 
 
 def fmt_money(value: float) -> str:
+    """格式化金额：加千分位逗号，保留两位小数，如 20000 → '20,000.00'。"""
     return f"{value:,.2f}"
 
 
 def build_table_md(rows: list[MonthRow]) -> str:
+    """将 12 个月的薪资明细组装成带 LaTeX 个税公式的 Markdown 表格。"""
     header = (
         "| 月份 | 当月税前工资 | 当月社保 | 当月公积金 | 当月个税 | 当月税后工资 | "
         "累积税前工资 | 累积社保 | 累积公积金 | 累积个税 | 当月个税比例 |"
