@@ -25,3 +25,6 @@ Opencode/
 Openclaw/
 test.ipynb
 Codex/config.toml
+
+# 临时文件
+temp.py
