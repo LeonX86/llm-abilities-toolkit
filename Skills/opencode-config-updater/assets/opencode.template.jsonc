@@ -1,0 +1,15 @@
+// opencode 配置模板 —— opencode-config-updater 在用户没有任何配置文件时新建所用：
+// 把新模型的条目填进 models、完整原始 id 填进 whitelist 后，用 Write 工具写入
+// <配置目录>/opencode.jsonc（目录由 backup_config.py 的输出给出）。
+// 模型条目（models 的 value）只允许这些字段：
+//   name / tool_call / reasoning / temperature / cost(input,output,cache_read,cache_write)
+//   / limit(context,output) / modalities(input,output) —— 查不到的字段直接省略，禁止多填。
+{
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "modelscope": {
+            "whitelist": [],
+            "models": {}
+        }
+    }
+}
