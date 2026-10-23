@@ -15,9 +15,12 @@ description: 备份并修改 opencode 全局配置文件（opencode.jsonc / open
 |---|---|---|
 | "添加 xx 模型"、"新增 xx"、"再加个 xx" | `add` | 保留现有全部内容，新增该模型（已存在则刷新其条目） |
 | "更新 xx 模型的配置/信息" | `add` | 保留其他模型，重新查询并覆盖该模型条目 |
+| "把 A 换成 B"、"用 B 替换 A"、"A 不要了换成 B" | `swap` | 只删除旧模型 A 并写入新模型 B，其他模型原样保留 |
 | "只保留 xx"、"只留 xx"、"删掉其他模型只要 xx" | `replace` | 清空原有 whitelist 和 models，只写入指定模型 |
 
-多个模型一次处理：一次查询、一次备份、一次修改。`replace` 会删掉原有模型条目（有备份可恢复），语义拿不准时先问一句再执行。
+`swap` 是"换一个"，`replace` 是"只留一个"：两者都会删模型，但 `swap` 保留其余模型，`replace` 清空其余模型。用户说"换成/替换"时默认 `swap`；只有明确的"只保留/只留/其他都删掉"才用 `replace`。语义拿不准时先问一句再执行。
+
+多个模型一次处理：一次查询、一次备份、一次修改。
 
 ## 工作流程
 
@@ -25,6 +28,11 @@ description: 备份并修改 opencode 全局配置文件（opencode.jsonc / open
 
 - 用户给的是 ModelScope 的完整原始 id（形如 `Qwen/Qwen3.8-Flash-Next`）。**原样使用，禁止改写**：大小写、组织前缀、拼写都以用户输入为准。ModelScope 的 id 与 models.dev / 厂商官方 id 存在差异是正常的，模型要生效就必须把完整原始 id 同时写进 `whitelist` 和 `models`。
 - id 必须包含 `/`；用户只给了裸名称时，先向用户确认完整 id 再继续。
+- `swap` 模式还要定位旧模型。按以下顺序匹配配置里已有的条目，**命中即停**：
+  1. 完整 id 精确匹配 `whitelist` / `models` 的键；
+  2. `models[<id>].name` 忽略大小写精确匹配（如 "DeepSeek V4.1 Flash"）；
+  3. 用户简称与 id 斜杠后缀忽略大小写的包含匹配（如 "dsv4.1" 命中 `deepseek-ai/DeepSeek-V4.1-Flash`）。
+- 匹配到 0 个或多个候选时，列出候选 id 和 name 询问用户，**不得猜测**；只有唯一候选才能继续。
 
 ### 2. 查询模型信息
 
@@ -53,6 +61,7 @@ python "<本skill目录>/scripts/backup_config.py"
 用 Read 读取 `config_path`，用 Edit 做文本级修改：
 
 - `add` 模式：在 `provider.modelscope.whitelist` 数组追加新 id（已存在则不动）；在 `models` 对象里新增该 id 的条目；若该 id 已有条目则原位替换那一段文本（刷新信息）。
+- `swap` 模式：在 `whitelist` 中把旧 id 原地替换为新 id（保持数组位置不变）；在 `models` 中用新条目的文本段替换旧条目；其他模型及其注释原样不动。旧 id 必须确实存在（第 1 步已确认），替换后不允许残留旧 id。
 - `replace` 模式：`whitelist` 与 `models` 只保留指定 id，删除其他模型条目对应的文本段（可连同该条目的专属注释一起删除）。
 - **JSONC 注释、缩进、键顺序一律保持原样**；mcp、其他 provider、theme 等其他配置一个字符都不许动；`provider.modelscope`（或其中的 whitelist/models）不存在时才新增该节点。
 - 条目内容从第 2 步的查询结果构造，只允许模板字段，查不到的字段直接省略。
@@ -60,14 +69,30 @@ python "<本skill目录>/scripts/backup_config.py"
 ### 5. 校验修改结果
 
 ```bash
+# add / replace
 python "<本skill目录>/scripts/validate_config.py" --mode add --require "Qwen/Qwen3.8-Flash-Next" --backup "<backup_path>"
+python "<本skill目录>/scripts/validate_config.py" --mode replace --require "ZhipuAI/GLM-5.3-Flash" --backup "<backup_path>"
+# swap：新 id 用 --require，旧 id 用 --remove
+python "<本skill目录>/scripts/validate_config.py" --mode swap --require "deepseek-ai/DeepSeek-V4.1-Flash-1017" --remove "deepseek-ai/DeepSeek-V4.1-Flash" --backup "<backup_path>"
 ```
 
-（replace 用 `--mode replace`；新建配置时没有 `--backup`；多个 id 重复传 `--require`）
+（新建配置时没有 `--backup`；多个 id 重复传 `--require` / `--remove`；`--remove` 只能配 `swap`）
 
-- `status=ok`：向用户报告配置文件路径、备份文件路径，以及每个模型的 `missing_fields`（逐项告知用户哪些字段没查到、已在配置中省略）。
+- `status=ok`：向用户报告配置文件路径、备份文件路径和 `missing_fields_new`（本次新模型缺的字段，已在配置中省略）。`missing_fields_pre_existing` 是修改前就存在的历史缺字段，**不要**说成本次改动造成的。
 - `status=invalid`：按 `errors` 修复文件后重新校验，直到通过；反复修不好就把 errors 原文告知用户并停止。
-- 校验器强制保证：JSON 合法；`provider.modelscope` 之外与备份零差异；add 模式注释零增删、原有模型原样保留；条目无模板外字段；add/replace 语义正确。
+
+模式与检查项：
+
+| 检查项 | add | swap | replace |
+|---|---|---|---|
+| JSON/JSONC 合法 | ✓ | ✓ | ✓ |
+| `provider.modelscope` 之外与备份零差异 | ✓ | ✓ | ✓ |
+| 注释零增删 | ✓ | ✓ | ✗（允许删被删条目的注释） |
+| 未涉及模型的条目原样保留 | ✓ | ✓ | ✗ |
+| 未涉及 whitelist 项保留 | ✓ | ✓（`--remove` 的除外） | ✗ |
+| 旧 id 必须存在于备份 | — | ✓ | — |
+| whitelist/models 终态精确匹配 | — | ✓ | ✓ |
+| 条目无模板外字段 | ✓ | ✓ | ✓ |
 
 ### 6. 提醒重启
 
@@ -80,6 +105,7 @@ python "<本skill目录>/scripts/validate_config.py" --mode add --require "Qwen/
 - 修改完成后必须运行 validate_config.py，校验不通过不得向用户交付。
 - 每个模型条目只允许模板字段，**禁止写入任何其他字段**（open_weights、release_date、attachment、provider、structured_output 等查询结果里的其他信息一律不要）。
 - 整个模型查不到 → 询问用户（见第 2 步）；个别字段查不到 → 直接省略该字段并告知用户。
+- `swap` 模式的旧 id 必须来自第 1 步的实际匹配结果；配置里找不到、或匹配到多个候选时停下询问，禁止凭空填一个 id。
 - 配置文件路径由脚本解析，不要自己猜路径。
 
 ## 脚本参考
@@ -88,7 +114,7 @@ python "<本skill目录>/scripts/validate_config.py" --mode add --require "Qwen/
 |---|---|---|
 | `query_model_info.py` | 查 models.dev 模型信息（`--json` 机器可读） | 0 查到 / 1 未查到 / 3 网络错误 |
 | `backup_config.py` | 定位配置文件并备份（`action=backed_up/missing`） | 0 成功 / 4 备份失败 |
-| `validate_config.py` | 校验修改结果（`errors` 给出失败原因） | 0 通过 / 3 找不到配置 / 4 校验失败 |
+| `validate_config.py` | 校验修改结果（`--mode add/swap/replace`；swap 用 `--remove` 传旧 id；`errors` 给出失败原因） | 0 通过 / 3 找不到配置 / 4 校验失败 |
 
 - 配置目录按顺序尝试：`$XDG_CONFIG_HOME/opencode` → `~/.config/opencode`（Windows 即 `%USERPROFILE%\.config\opencode`，例如 `C:\Users\Leon\.config\opencode`）。
 - 目录内依次查找 `opencode.jsonc`、`opencode.json`；两者都在时修改 `opencode.jsonc`。
